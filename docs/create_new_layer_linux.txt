@@ -1,0 +1,119 @@
+
+Yocto: Create a New Layer
+Table of Contents
+1 Creat a new layer
+
+To use yocto-layer command to create a new layer: yannik
+
+$ yocto-layer create yannik
+
+A new directory meta-yannik will be created after the command is executed, and add the layer to BBLAYERS in conf/bblayers.conf:
+
+$ bitbake-layers add-layer <path-to-new-layer>
+
+or directly edit bblayers.conf file to add the new layer to BBLAYERS.
+2 Create sub-dirctories
+
+To create some necessary sub-directories:
+
+$ mkdir -p recipes-kernel/linux
+$ mkdir -p recipes-kernel/linux/files  --> add patches here
+
+3 Create Kernel Patch
+3.1 Enter into kernel source code dirctory
+
+$ bitbake -c devshell linux-renesas
+
+3.2 Add a new kernel module/code
+
+/drivers/misc/testmod.c:
+
+#include <linux/module.h>
+static int __init testmod_init(void)
+{
+	pr_infoi("%s ...\n", __func__);
+}
+
+static void __exit testmod_exit(void)
+{
+	pr_info("%s ...\n", __func__);
+}
+
+module_init(testmod_init);
+module_exit(testmod_exit);
+
+MODULE_LICENSE("GPL");
+
+Makefile--> 
+	drivers/misc/Makefile (add to the end of the file):
+
+	obj-$(CONFIG_TESTMOD_DRIVER)     += testmod.o
+Kconfig -->
+	drivers/misk/Kconfig (add to the end of the file):
+
+	config TESTMOD_DRIVER
+		tristate "Yocto Project Test Driver"
+		help
+	  	This driver does nothing but print a message.
+
+3.3 Commit the new code
+$ git status
+$ git add .
+$ git commit -m "Add the testmod driver"
+
+3.4 Create a patch file
+$ git format-patch -n HEAD^
+
+3.5 Move the patch to our new layer
+
+Move the patch file 0001-Add-testmod-driver.patch to recipes-kernel/linux/files in our new layer.
+3.6 Add configuration fragment
+
+meta-yannik/recipes-kernel/linux/files/testmod.cfg:
+
+# Enabel testmode driver
+CONFIG_TESTMODE_DRIVER=y
+
+3.7 Add configuration fragment and patch file into bbappend file
+
+meta-yannik/recipes-kernel/linux/linux-renesas\4.14.bbappend:
+
+FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
+
+SRC_URI += "file://testmod.cfg"
+SRC_URI += "file://0001-Add-testmod-driver.patch"
+
+directory structure:
+
+~/work/yocto_linux/meta-yannik ⌚ 15:52:43
+⚡ tree
+.
+├── conf
+│   └── layer.conf
+├── COPYING.MIT
+├── README
+└── recipes-kernel
+    └── linux
+	├── bitbake-cookerdaemon.log
+	├── files
+	│   ├── 0001-Add-testmod-driver.patch
+	│   ├── bitbake-cookerdaemon.log
+	│   └── testmod.cfg
+	└── linux-renesas_4.14.bbappend
+
+4 directories, 8 files
+
+4 Reconstruct Kernel
+
+$ bitbake -C fetch linux-renesas
+
+Date: <2018-11-18 日>
+
+Author: yannik
+
+Created: 2018-11-18 日 16:02
+
+Emacs 25.2.2 (Org mode 8.2.10)
+
+Validate
+
